@@ -1,0 +1,108 @@
+name: 29901 Testiranje kode
+
+# Workflow se sproži ob vsakem potisku kode na vejo main.
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  preveri-testne-skripte:
+    # Job se izvaja na lastnem self-hosted runnerju, ki teče v Ubuntu virtualki.
+    runs-on: self-hosted
+
+    steps:
+      # Prenesemo kodo iz GitHub repozitorija na runner.
+      - name: Prenos kode iz repozitorija
+        uses: actions/checkout@v4
+
+      # Ustvarimo datoteko napaka.txt in vanjo preusmerimo standardno napako.
+      # Ta job preveri, ali obstaja mapa tests in ali vsebuje testne skripte.
+      - name: Preverjanje obstoja testnih skript
+        shell: bash
+        run: |
+          # Najprej ustvarimo prazno datoteko napaka.txt.
+          : > napaka.txt
+
+          # Vse napake znotraj bloka preusmerimo v napaka.txt.
+          {
+            if [ ! -d "tests" ]; then
+              echo "Napaka: mapa tests ne obstaja." >&2
+            fi
+
+            if ! find tests -name "test_*.py" | grep -q .; then
+              echo "Napaka: v mapi tests ni testnih skript oblike test_*.py." >&2
+            fi
+          } 2> napaka.txt
+
+          # Izpišemo informacijo za lažje razumevanje v GitHub Actions logu.
+          if [ -s napaka.txt ]; then
+            echo "Pri preverjanju testnih skript je bila zaznana napaka."
+            cat napaka.txt
+          else
+            echo "Testne skripte obstajajo. Datoteka napaka.txt je prazna."
+          fi
+
+      # Datoteko napaka.txt shranimo kot artifact,
+      # da jo lahko uporabi naslednji job.
+      - name: Shranjevanje datoteke napaka.txt kot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: napaka-artifact
+          path: napaka.txt
+
+  izvedi-teste:
+    # Drugi job je odvisen od prvega.
+    # To pomeni, da se začne šele po končanem jobu preveri-testne-skripte.
+    needs: preveri-testne-skripte
+
+    # Tudi ta job teče na self-hosted runnerju.
+    runs-on: self-hosted
+
+    # Matrix je obvezna zahteva naloge.
+    # Tukaj je uporabljena za izbiro verzije Pythona.
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      # Prenesemo kodo iz repozitorija.
+      - name: Prenos kode iz repozitorija
+        uses: actions/checkout@v4
+
+      # Prenesemo artifact, ki ga je ustvaril prvi job.
+      - name: Prenos artifacta napaka.txt
+        uses: actions/download-artifact@v4
+        with:
+          name: napaka-artifact
+
+      # Preverimo vsebino datoteke napaka.txt.
+      # Če datoteka ni prazna, prekinemo izvajanje testov.
+      - name: Preverjanje vsebine datoteke napaka.txt
+        shell: bash
+        run: |
+          if [ -s napaka.txt ]; then
+            echo "Datoteka napaka.txt ni prazna. Testiranje se prekine."
+            echo "Vsebina napaka.txt:"
+            cat napaka.txt
+            exit 1
+          fi
+
+          echo "Datoteka napaka.txt je prazna. Nadaljujem s testiranjem."
+
+      # Nastavimo Python okolje glede na vrednost iz matrix strategije.
+      - name: Nastavitev Python okolja
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Namestimo odvisnosti iz requirements.txt.
+      - name: Namestitev Python odvisnosti
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Zaženemo teste, ki smo jih napisali sami.
+      - name: Zagon testov
+        run: |
+          python -m pytest
