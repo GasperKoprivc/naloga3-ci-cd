@@ -1,0 +1,1 @@
+Popravek DockerHub prijave
