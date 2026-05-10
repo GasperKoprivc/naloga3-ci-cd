@@ -1,0 +1,4 @@
+GitHub:
+https://github.com/GasperKoprivc/naloga3-ci-cd
+DockerHub:
+https://hub.docker.com/repository/docker/gasperkoprivc/naloga3-ci-cd
