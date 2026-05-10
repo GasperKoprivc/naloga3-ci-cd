@@ -1,0 +1,17 @@
+name: Demo Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  demo-job:
+    runs-on: self-hosted
+
+    steps:
+      - name: Prenos kode
+        uses: actions/checkout@v4
+
+      - name: Izpis demo sporocila
+        run: echo "Demo workflow dela na self-hosted runnerju!"
