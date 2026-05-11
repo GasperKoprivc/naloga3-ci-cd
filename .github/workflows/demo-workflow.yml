@@ -13,5 +13,5 @@ jobs:
       - name: Prenos kode
         uses: actions/checkout@v4
         
-      -name: test
-      run: echo "zdravo"
+      - name: test
+        run: echo "zdravo"
