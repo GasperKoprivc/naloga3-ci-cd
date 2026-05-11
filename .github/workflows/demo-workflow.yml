@@ -12,6 +12,6 @@ jobs:
     steps:
       - name: Prenos kode
         uses: actions/checkout@v4
-
-      - name: Izpis demo sporocila
-        run: echo "Demo workflow dela na self-hosted runnerju!"
+        
+      -name: test
+      run: echo "zdravo"
